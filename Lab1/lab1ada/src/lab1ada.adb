@@ -1,7 +1,6 @@
 with Ada.Wide_Text_IO; use Ada.Wide_Text_IO;
 with Ada.Strings.Wide_Fixed; use Ada.Strings.Wide_Fixed;
 with Ada.Strings; use Ada.Strings;
-with Ada.Numerics.Big_Numbers;
 
 procedure Lab1Ada is
    
@@ -39,7 +38,7 @@ procedure Lab1Ada is
    type Stop_Flag_Access is access Stop_Flag;
 
    task type Main_Thread is
-      entry Start (Id : Integer; Step : Integer; Time : Integer; Flag : Stop_Flag_Access);
+      entry Start (Id : Integer; Step : Long_Long_Integer; Time : Integer; Flag : Stop_Flag_Access);
    end Main_Thread;
 
    task type Break_Thread is
@@ -54,7 +53,7 @@ procedure Lab1Ada is
       Sum : Long_Long_Integer := 0;
       Elements_Count : Long_Long_Integer := 0;
    begin
-      accept Start (Id : Integer; Step : Integer; Time : Integer; Flag : Stop_Flag_Access) do
+      accept Start (Id : Integer; Step : Long_Long_Integer; Time : Integer; Flag : Stop_Flag_Access) do
          My_Id := Id;
          My_Step := Step;
          My_Time := Time;
@@ -62,7 +61,7 @@ procedure Lab1Ada is
       end Start;
 
       loop
-         Sum := Sum + Long_Long_Integer(My_Step);
+         Sum := Sum + My_Step;
          Elements_Count := Elements_Count + 1;
          exit when My_Flag.Get;
       end loop;
@@ -70,7 +69,7 @@ procedure Lab1Ada is
       Output_Lock.Seize;
       Put_Line (Trim(Integer'Wide_Image(My_Id), Both) & " - " & 
                 Trim(Long_Long_Integer'Wide_Image(Sum), Both) & ", " & 
-                Trim(Integer'Wide_Image(My_Step), Both) & " - " & 
+                Trim(Long_Long_Integer'Wide_Image(My_Step), Both) & " - " & 
                 Trim(Long_Long_Integer'Wide_Image(Elements_Count), Both) & " разів за " &
                 Trim(Integer'Wide_Image(My_Time), Both) & " сек.");
       Output_Lock.Release;
