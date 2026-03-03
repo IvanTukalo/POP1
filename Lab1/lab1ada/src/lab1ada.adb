@@ -1,6 +1,7 @@
 with Ada.Wide_Text_IO; use Ada.Wide_Text_IO;
 with Ada.Strings.Wide_Fixed; use Ada.Strings.Wide_Fixed;
 with Ada.Strings; use Ada.Strings;
+with Ada.Numerics.Big_Numbers;
 
 procedure Lab1Ada is
    
@@ -51,7 +52,7 @@ procedure Lab1Ada is
       My_Time : Integer;
       My_Flag : Stop_Flag_Access;
       Sum : Long_Long_Integer := 0;
-      Elements_Count : Long_Long_Long_Integer := 0;
+      Elements_Count : Long_Long_Integer := 0;
       Current_Element : Long_Long_Integer := 0;
    begin
       accept Start (Id : Integer; Step : Integer; Time : Integer; Flag : Stop_Flag_Access) do
