@@ -48,12 +48,11 @@ procedure Lab1Ada is
 
    task body Main_Thread is
       My_Id : Integer;
-      My_Step : Integer;
+      My_Step : Long_Long_Integer;
       My_Time : Integer;
       My_Flag : Stop_Flag_Access;
       Sum : Long_Long_Integer := 0;
       Elements_Count : Long_Long_Integer := 0;
-      Current_Element : Long_Long_Integer := 0;
    begin
       accept Start (Id : Integer; Step : Integer; Time : Integer; Flag : Stop_Flag_Access) do
          My_Id := Id;
@@ -63,8 +62,7 @@ procedure Lab1Ada is
       end Start;
 
       loop
-         Sum := Sum + Current_Element;
-         Current_Element := Current_Element + Long_Long_Integer(My_Step);
+         Sum := Sum + Long_Long_Integer(My_Step);
          Elements_Count := Elements_Count + 1;
          exit when My_Flag.Get;
       end loop;
@@ -91,7 +89,7 @@ procedure Lab1Ada is
       My_Flag.Set;
    end Break_Thread;
 
-   Step_Input : Integer;
+   Step_Input : Long_Long_Integer;
    Input_Line : Wide_String (1 .. 256);
    Last_Idx : Natural;
    Num_Threads : Natural := 0;
@@ -108,7 +106,7 @@ begin
          Put_Line ("Введіть крок роботи потоків (0 для виходу)");
          begin
             Get_Line (Input_Line, Last_Idx);
-            Step_Input := Integer'Wide_Value(Input_Line(1 .. Last_Idx));
+            Step_Input := Long_Long_Integer'Wide_Value(Input_Line(1 .. Last_Idx));
             if Step_Input = 0 then
                Put_Line ("Програма завершує роботу.");
                exit Main_Loop;

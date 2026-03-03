@@ -119,12 +119,10 @@ namespace Lab1Csharp
         {
             BigInteger sum = 0;
             BigInteger elementsCount = 0;
-            BigInteger currentElement = 0;
 
             while (!canStop)
             {
-                sum += currentElement;
-                currentElement += step;
+                sum += step;
                 elementsCount++;
             }
 

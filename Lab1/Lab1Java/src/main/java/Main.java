@@ -118,12 +118,10 @@ class WorkerThread extends Thread {
     public void run() {
         BigInteger sum = BigInteger.ZERO;
         BigInteger elementsCount = BigInteger.ZERO;
-        BigInteger currentElement = BigInteger.ZERO;
         BigInteger stepBig = BigInteger.valueOf(step);
 
         while (!canStop) {
-            sum = sum.add(currentElement);
-            currentElement = currentElement.add(stepBig);
+            sum = sum.add(stepBig);
             elementsCount = elementsCount.add(BigInteger.ONE);
         }
 
