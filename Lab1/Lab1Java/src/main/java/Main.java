@@ -84,12 +84,17 @@ public class Main {
                 stoppers[i].start();
             }
 
-            for (int i = 0; i < numThreads; i++) {
-                try {
-                    workers[i].join();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+            int maxTime = 0;
+            for (int t : times) {
+                if (t > maxTime) {
+                    maxTime = t;
                 }
+            }
+
+            try {
+                Thread.sleep((maxTime + 1) * 1000L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
             }
 
             System.out.println("Усі потоки завершили роботу. Починаємо новий цикл.");

@@ -59,6 +59,11 @@ namespace Lab1Csharp
                 }
 
                 int numThreads = times.Length;
+                int maxTime = 0;
+                for (int i = 0; i < times.Length; i++)
+                {
+                    if (times[i] > maxTime) maxTime = times[i];
+                }
 
                 Worker[] workers = new Worker[numThreads];
                 Thread[] workerThreads = new Thread[numThreads];
@@ -85,12 +90,10 @@ namespace Lab1Csharp
                     stopperThreads[i].Start();
                 }
 
-                for (int i = 0; i < numThreads; i++)
-                {
-                    workerThreads[i].Join();
-                }
+                Thread.Sleep((maxTime + 1) * 1000);
 
-                Console.WriteLine("Усі потоки завершили роботу. Починаємо новий цикл.");
+
+                Console.WriteLine("\nУсі потоки завершили роботу. Починаємо новий цикл.");
                 Console.WriteLine();
             }
         }
