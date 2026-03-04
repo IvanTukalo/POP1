@@ -60,76 +60,62 @@ namespace Lab1Csharp
 
                 int numThreads = times.Length;
                 int maxTime = 0;
-                for (int i = 0; i < times.Length; i++)
+                for (int i = 0; i < numThreads; i++)
                 {
                     if (times[i] > maxTime) maxTime = times[i];
                 }
 
-                Worker[] workers = new Worker[numThreads];
-                Thread[] workerThreads = new Thread[numThreads];
-                Thread[] stopperThreads = new Thread[numThreads];
+                int[] stopFlags = new int[numThreads];
+                Thread[] threads = new Thread[numThreads];
 
                 for (int i = 0; i < numThreads; i++)
                 {
+                    int localIndex = i;
                     int timeLimit = times[i];
                     int threadId = i + 1;
 
-                    workers[i] = new Worker(threadId, step, timeLimit);
-                    workerThreads[i] = new Thread(workers[i].Calculate);
+                    threads[i] = new Thread(() => {
+                        BigInteger sum = 0;
+                        BigInteger elementsCount = 0;
 
-                    int currentIndex = i;
-                    stopperThreads[i] = new Thread(() => {
-                        Thread.Sleep(timeLimit * 1000);
-                        workers[currentIndex].Stop();
+                        while (Volatile.Read(ref stopFlags[localIndex]) == 0)
+                        {
+                            sum += step;
+                            elementsCount++;
+                        }
+
+                        Console.WriteLine($"{threadId} - {sum}, {step} - {elementsCount} разів за {timeLimit} сек.");
                     });
+                    threads[i].Start();
                 }
 
-                for (int i = 0; i < numThreads; i++)
-                {
-                    workerThreads[i].Start();
-                    stopperThreads[i].Start();
-                }
+                Thread masterStopper = new Thread(() => {
+                    var events = new (int Time, int Index)[numThreads];
+                    for (int i = 0; i < numThreads; i++)
+                    {
+                        events[i] = (times[i], i);
+                    }
+                    Array.Sort(events, (a, b) => a.Time.CompareTo(b.Time));
+
+                    int elapsed = 0;
+                    for (int i = 0; i < numThreads; i++)
+                    {
+                        int sleepTime = events[i].Time - elapsed;
+                        if (sleepTime > 0)
+                        {
+                            Thread.Sleep(sleepTime * 1000);
+                            elapsed += sleepTime;
+                        }
+                        Volatile.Write(ref stopFlags[events[i].Index], 1);
+                    }
+                });
+                masterStopper.Start();
 
                 Thread.Sleep((maxTime + 1) * 1000);
-
 
                 Console.WriteLine("\nУсі потоки завершили роботу. Починаємо новий цикл.");
                 Console.WriteLine();
             }
-        }
-    }
-
-    class Worker
-    {
-        private int id;
-        private int step;
-        private int time;
-        private volatile bool canStop = false;
-
-        public Worker(int id, int step, int time)
-        {
-            this.id = id;
-            this.step = step;
-            this.time = time;
-        }
-
-        public void Stop()
-        {
-            canStop = true;
-        }
-
-        public void Calculate()
-        {
-            BigInteger sum = 0;
-            BigInteger elementsCount = 0;
-
-            while (!canStop)
-            {
-                sum += step;
-                elementsCount++;
-            }
-
-            Console.WriteLine($"{id} - {sum}, {step} - {elementsCount} разів за {time} сек.");
         }
     }
 }

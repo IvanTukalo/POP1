@@ -6,6 +6,7 @@ procedure Lab1Ada is
    
    protected type Stop_Flag is
       procedure Set;
+      procedure Reset;
       function Get return Boolean;
    private
       Value : Boolean := False;
@@ -13,6 +14,7 @@ procedure Lab1Ada is
 
    protected body Stop_Flag is
       procedure Set is begin Value := True; end Set;
+      procedure Reset is begin Value := False; end Reset;
       function Get return Boolean is begin return Value; end Get;
    end Stop_Flag;
 
@@ -35,35 +37,34 @@ procedure Lab1Ada is
       end Release;
    end Output_Lock;
 
-   type Stop_Flag_Access is access Stop_Flag;
+   task type Work_Thread is
+      entry Start (Id : Integer; Step : Long_Long_Integer; Time : Integer);
+   end Work_Thread;
 
-   task type Main_Thread is
-      entry Start (Id : Integer; Step : Long_Long_Integer; Time : Integer; Flag : Stop_Flag_Access);
-   end Main_Thread;
+   task type Master_Break_Thread is
+      entry Start (N : Integer);
+   end Master_Break_Thread;
 
-   task type Break_Thread is
-      entry Start (Seconds : Integer; Flag : Stop_Flag_Access);
-   end Break_Thread;
+   Times : array (1 .. 100) of Integer; 
+   Flags : array (1 .. 100) of Stop_Flag;
 
-   task body Main_Thread is
+   task body Work_Thread is
       My_Id : Integer;
       My_Step : Long_Long_Integer;
       My_Time : Integer;
-      My_Flag : Stop_Flag_Access;
       Sum : Long_Long_Integer := 0;
       Elements_Count : Long_Long_Integer := 0;
    begin
-      accept Start (Id : Integer; Step : Long_Long_Integer; Time : Integer; Flag : Stop_Flag_Access) do
+      accept Start (Id : Integer; Step : Long_Long_Integer; Time : Integer) do
          My_Id := Id;
          My_Step := Step;
          My_Time := Time;
-         My_Flag := Flag;
       end Start;
 
       loop
          Sum := Sum + My_Step;
          Elements_Count := Elements_Count + 1;
-         exit when My_Flag.Get;
+         exit when Flags(My_Id).Get;
       end loop;
 
       Output_Lock.Seize;
@@ -73,26 +74,59 @@ procedure Lab1Ada is
                 Trim(Long_Long_Integer'Wide_Image(Elements_Count), Both) & " разів за " &
                 Trim(Integer'Wide_Image(My_Time), Both) & " сек.");
       Output_Lock.Release;
-   end Main_Thread;
+   end Work_Thread;
 
-   task body Break_Thread is
-      My_Seconds : Integer;
-      My_Flag : Stop_Flag_Access;
+   task body Master_Break_Thread is
+      My_N : Integer;
+
+      type Event_Record is record
+         Time  : Integer;
+         Index : Positive;
+      end record;
+      type Event_Array is array (Positive range <>) of Event_Record;
+
+      Elapsed : Integer;
+      Sleep_Time : Integer;
+      Temp : Event_Record;
    begin
-      accept Start (Seconds : Integer; Flag : Stop_Flag_Access) do
-         My_Seconds := Seconds;
-         My_Flag := Flag;
+      accept Start (N : Integer) do
+         My_N := N;
       end Start;
-      
-      delay Duration(My_Seconds);
-      My_Flag.Set;
-   end Break_Thread;
+
+      declare
+         Events : Event_Array (1 .. My_N);
+      begin
+         for I in 1 .. My_N loop
+            Events(I) := (Time => Times(I), Index => I);
+         end loop;
+
+         for I in 1 .. My_N - 1 loop
+            for J in 1 .. My_N - I loop
+               if Events(J).Time > Events(J + 1).Time then
+                  Temp := Events(J);
+                  Events(J) := Events(J + 1);
+                  Events(J + 1) := Temp;
+               end if;
+            end loop;
+         end loop;
+
+         Elapsed := 0;
+         for I in 1 .. My_N loop
+            Sleep_Time := Events(I).Time - Elapsed;
+            if Sleep_Time > 0 then
+               delay Duration(Sleep_Time);
+               Elapsed := Elapsed + Sleep_Time;
+            end if;
+            Flags(Events(I).Index).Set;
+         end loop;
+      end;
+   end Master_Break_Thread;
 
    Step_Input : Long_Long_Integer;
    Input_Line : Wide_String (1 .. 256);
    Last_Idx : Natural;
    Num_Threads : Natural := 0;
-   Times : array (1 .. 100) of Integer; 
+   Max_Time : Integer;
    
    Valid_Step : Boolean;
    Valid_Times : Boolean;
@@ -168,16 +202,25 @@ begin
          end if;
       end loop;
 
+      Max_Time := 0;
+      for K in 1 .. Num_Threads loop
+         if Times(K) > Max_Time then
+            Max_Time := Times(K);
+         end if;
+      end loop;
+
       declare
-         Flags  : array (1 .. Num_Threads) of Stop_Flag_Access;
-         Mains  : array (1 .. Num_Threads) of Main_Thread;
-         Breaks : array (1 .. Num_Threads) of Break_Thread;
+         Works  : array (1 .. Num_Threads) of Work_Thread;
+         Master : Master_Break_Thread;
       begin
          for K in 1 .. Num_Threads loop
-            Flags(K) := new Stop_Flag;
-            Mains(K).Start(K, Step_Input, Times(K), Flags(K));
-            Breaks(K).Start(Times(K), Flags(K));
+            Flags(K).Reset;
+            Works(K).Start(K, Step_Input, Times(K));
          end loop;
+         
+         Master.Start(Num_Threads);
+         
+         delay Duration(Max_Time + 1);
       end;
       
       Put_Line ("Усі потоки завершили роботу. Починаємо новий цикл.");

@@ -2,6 +2,9 @@ import java.math.BigInteger;
 import java.util.Scanner;
 import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class Main {
     public static void main(String[] args) {
@@ -61,35 +64,62 @@ public class Main {
             }
 
             int numThreads = times.length;
-            WorkerThread[] workers = new WorkerThread[numThreads];
-            Thread[] stoppers = new Thread[numThreads];
-
-            for (int i = 0; i < numThreads; i++) {
-                int timeLimit = times[i];
-                workers[i] = new WorkerThread(i + 1, step, timeLimit);
-                final WorkerThread worker = workers[i];
-
-                stoppers[i] = new Thread(() -> {
-                    try {
-                        Thread.sleep(timeLimit * 1000L);
-                    } catch (InterruptedException e) {
-                        Thread.currentThread().interrupt();
-                    }
-                    worker.stopThread();
-                });
-            }
-
-            for (int i = 0; i < numThreads; i++) {
-                workers[i].start();
-                stoppers[i].start();
-            }
-
             int maxTime = 0;
             for (int t : times) {
                 if (t > maxTime) {
                     maxTime = t;
                 }
             }
+
+            AtomicBoolean[] stopFlags = new AtomicBoolean[numThreads];
+            Thread[] threads = new Thread[numThreads];
+
+            for (int i = 0; i < numThreads; i++) {
+                stopFlags[i] = new AtomicBoolean(false);
+                final int localIndex = i;
+                final int timeLimit = times[i];
+                final int threadId = i + 1;
+                final int currentStep = step;
+
+                threads[i] = new Thread(() -> {
+                    BigInteger sum = BigInteger.ZERO;
+                    BigInteger elementsCount = BigInteger.ZERO;
+                    BigInteger stepBig = BigInteger.valueOf(currentStep);
+
+                    while (!stopFlags[localIndex].get()) {
+                        sum = sum.add(stepBig);
+                        elementsCount = elementsCount.add(BigInteger.ONE);
+                    }
+
+                    System.out.println(threadId + " - " + sum + ", " + currentStep + " - " + elementsCount + " разів за " + timeLimit + " сек.");
+                });
+                threads[i].start();
+            }
+
+            final int[] finalTimes = times;
+            Thread masterStopper = new Thread(() -> {
+                int[][] events = new int[numThreads][2];
+                for (int i = 0; i < numThreads; i++) {
+                    events[i][0] = finalTimes[i];
+                    events[i][1] = i;
+                }
+                Arrays.sort(events, Comparator.comparingInt(a -> a[0]));
+
+                int elapsed = 0;
+                for (int i = 0; i < numThreads; i++) {
+                    int sleepTime = events[i][0] - elapsed;
+                    if (sleepTime > 0) {
+                        try {
+                            Thread.sleep(sleepTime * 1000L);
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                        }
+                        elapsed += sleepTime;
+                    }
+                    stopFlags[events[i][1]].set(true);
+                }
+            });
+            masterStopper.start();
 
             try {
                 Thread.sleep((maxTime + 1) * 1000L);
@@ -100,36 +130,5 @@ public class Main {
             System.out.println("Усі потоки завершили роботу. Починаємо новий цикл.");
             System.out.println();
         }
-    }
-}
-
-class WorkerThread extends Thread {
-    private final int id;
-    private final int step;
-    private final int timeLimit;
-    private volatile boolean canStop = false;
-
-    public WorkerThread(int id, int step, int timeLimit) {
-        this.id = id;
-        this.step = step;
-        this.timeLimit = timeLimit;
-    }
-
-    public void stopThread() {
-        this.canStop = true;
-    }
-
-    @Override
-    public void run() {
-        BigInteger sum = BigInteger.ZERO;
-        BigInteger elementsCount = BigInteger.ZERO;
-        BigInteger stepBig = BigInteger.valueOf(step);
-
-        while (!canStop) {
-            sum = sum.add(stepBig);
-            elementsCount = elementsCount.add(BigInteger.ONE);
-        }
-
-        System.out.println(id + " - " + sum + ", " + step + " - " + elementsCount + " разів за " + timeLimit + " сек.");
     }
 }
