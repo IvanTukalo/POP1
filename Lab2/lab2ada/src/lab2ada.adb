@@ -3,12 +3,14 @@ with Ada.Strings.Wide_Fixed; use Ada.Strings.Wide_Fixed;
 with Ada.Strings; use Ada.Strings;
 with Ada.Real_Time; use Ada.Real_Time;
 with Ada.Numerics.Discrete_Random;
+with Ada.Unchecked_Deallocation;
 
 procedure Lab2Ada is
    Dim : constant Integer := 2_000_000_000;
 
    type Int_Array is array (Integer range <>) of Integer;
    type Int_Array_Access is access Int_Array;
+   procedure Free is new Ada.Unchecked_Deallocation (Int_Array, Int_Array_Access);
    Arr : Int_Array_Access;
 
    subtype Val_Range is Integer range 1 .. 100;
@@ -174,4 +176,6 @@ begin
    Put (" - " & Trim_Int (Best_Time) & " мс в ");
    Wide_Float_IO.Put (Speedup, Fore => 1, Aft => 2, Exp => 0);
    Put_Line ("x швидше");
+
+   Free (Arr);
 end Lab2Ada;
