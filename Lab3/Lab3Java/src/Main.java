@@ -7,6 +7,7 @@ public class Main {
     private Semaphore accessMutex;
     private Semaphore emptySlots;
     private Semaphore filledSlots;
+    private Semaphore completionSemaphore; // Четвертий семафор
 
     private int currentStorageCount;
     private int globalConsumed;
@@ -31,7 +32,7 @@ public class Main {
             int capacity = 0;
             int[] producerItems;
 
-            System.out.println("Оберіть режим роботи (1 - Випадкова генерація, 2 - Ручне введення)");
+            System.out.println("Оберіть режим роботи (1 - Випадкова генерація, 2 - Ручне введення, 0 - Вихід)");
             int mode = 0;
             while (true) {
                 String input = scanner.nextLine().trim();
@@ -120,33 +121,28 @@ public class Main {
 
             this.numConsumers = numConsumers;
 
-            // Активація справедливого режиму (FIFO) для всіх семафорів
             accessMutex = new Semaphore(1, true);
             emptySlots = new Semaphore(capacity, true);
             filledSlots = new Semaphore(0, true);
 
-            Thread[] producers = new Thread[numProducers];
+            // Ініціалізуємо четвертий семафор нулем
+            completionSemaphore = new Semaphore(0, true);
+
             for (int i = 0; i < numProducers; i++) {
                 final int localIndex = i + 1;
                 final int itemsToProduce = producerItems[i];
-                producers[i] = new Thread(() -> produce(localIndex, itemsToProduce));
-                producers[i].start();
+                new Thread(() -> produce(localIndex, itemsToProduce)).start();
             }
 
-            Thread[] consumers = new Thread[numConsumers];
             for (int i = 0; i < numConsumers; i++) {
                 final int localIndex = i + 1;
-                consumers[i] = new Thread(() -> consume(localIndex));
-                consumers[i].start();
+                new Thread(() -> consume(localIndex)).start();
             }
 
             try {
-                for (int i = 0; i < numProducers; i++) {
-                    producers[i].join();
-                }
-                for (int i = 0; i < numConsumers; i++) {
-                    consumers[i].join();
-                }
+                // Java дозволяє захопити одразу кілька дозволів одним викликом
+                int totalThreads = numProducers + numConsumers;
+                completionSemaphore.acquire(totalThreads);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -176,6 +172,9 @@ public class Main {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } finally {
+            // Сигналізуємо головному потоку
+            completionSemaphore.release();
         }
     }
 
@@ -210,6 +209,9 @@ public class Main {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+        } finally {
+            // Сигналізуємо головному потоку
+            completionSemaphore.release();
         }
     }
 }

@@ -8,6 +8,7 @@ namespace Lab3Csharp
         private Semaphore accessMutex;
         private Semaphore emptySlots;
         private Semaphore filledSlots;
+        private Semaphore completionSemaphore; // Четвертий семафор
 
         private int currentStorageCount;
         private int globalConsumed;
@@ -30,7 +31,6 @@ namespace Lab3Csharp
         {
             for (int j = 0; ;)
             {
-                // Примусове обнулення стану перед кожним новим запуском
                 currentStorageCount = 0;
                 globalConsumed = 0;
                 totalItems = 0;
@@ -40,7 +40,7 @@ namespace Lab3Csharp
                 int capacity = 0;
                 int[] producerItems = null;
 
-                Console.WriteLine("Оберіть режим роботи (1 - Випадкова генерація, 2 - Ручне введення)");
+                Console.WriteLine("Оберіть режим роботи (1 - Випадкова генерація, 2 - Ручне введення, 0 - Вихід)");
                 int mode = 1;
                 while (true)
                 {
@@ -48,7 +48,7 @@ namespace Lab3Csharp
                     {
                         break;
                     }
-                    Console.WriteLine("Помилка вводу. Введіть 1 або 2.");
+                    Console.WriteLine("Помилка вводу. Введіть 0, 1 або 2.");
                 }
 
                 if (mode == 2)
@@ -97,7 +97,7 @@ namespace Lab3Csharp
                 else if (mode == 0)
                 {
                     return;
-                }    
+                }
                 else
                 {
                     Random rnd = new Random();
@@ -127,34 +127,34 @@ namespace Lab3Csharp
                 }
                 Console.WriteLine();
 
+                this.numConsumers = numConsumers;
+
                 accessMutex = new Semaphore(1, 1);
                 emptySlots = new Semaphore(capacity, capacity);
                 filledSlots = new Semaphore(0, capacity);
 
-                Thread[] producers = new Thread[numProducers];
+                // Ініціалізація четвертого семафора нулем. 
+                // Максимальна місткість дорівнює загальній кількості потоків.
+                int totalThreads = numProducers + numConsumers;
+                completionSemaphore = new Semaphore(0, totalThreads);
+
                 for (int i = 0; i < numProducers; i++)
                 {
                     int localIndex = i + 1;
                     int itemsToProduce = producerItems[i];
-                    producers[i] = new Thread(() => Produce(localIndex, itemsToProduce));
-                    producers[i].Start();
+                    new Thread(() => Produce(localIndex, itemsToProduce)).Start();
                 }
 
-                Thread[] consumers = new Thread[numConsumers];
                 for (int i = 0; i < numConsumers; i++)
                 {
                     int localIndex = i + 1;
-                    consumers[i] = new Thread(() => Consume(localIndex));
-                    consumers[i].Start();
+                    new Thread(() => Consume(localIndex)).Start();
                 }
 
-                for (int i = 0; i < numProducers; i++)
+                // Головний потік блокується стільки разів, скільки потоків ми запустили
+                for (int i = 0; i < totalThreads; i++)
                 {
-                    producers[i].Join();
-                }
-                for (int i = 0; i < numConsumers; i++)
-                {
-                    consumers[i].Join();
+                    completionSemaphore.WaitOne();
                 }
 
                 Console.WriteLine("Усі потоки успішно завершили роботу.\n");
@@ -163,60 +163,76 @@ namespace Lab3Csharp
 
         private void Produce(int producerIndex, int itemsToProduce)
         {
-            int personalProduced = 0;
-            while (personalProduced < itemsToProduce)
+            try
             {
-                emptySlots.WaitOne();
-                accessMutex.WaitOne();
-
-                currentStorageCount++;
-                personalProduced++;
-
-                if (personalProduced == itemsToProduce)
+                int personalProduced = 0;
+                while (personalProduced < itemsToProduce)
                 {
-                    Console.WriteLine($"{producerIndex} Виробник завершив свою роботу, створено {personalProduced} товарів, заповненість {currentStorageCount}");
-                }
-                else
-                {
-                    Console.WriteLine($"{producerIndex} Виробник поклав свій {personalProduced} товар на склад, заповненість {currentStorageCount}");
-                }
+                    emptySlots.WaitOne();
+                    accessMutex.WaitOne();
 
-                accessMutex.Release();
-                filledSlots.Release();
+                    currentStorageCount++;
+                    personalProduced++;
+
+                    if (personalProduced == itemsToProduce)
+                    {
+                        Console.WriteLine($"{producerIndex} Виробник завершив свою роботу, створено {personalProduced} товарів, заповненість {currentStorageCount}");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"{producerIndex} Виробник поклав свій {personalProduced} товар на склад, заповненість {currentStorageCount}");
+                    }
+
+                    accessMutex.Release();
+                    filledSlots.Release();
+                }
+            }
+            finally
+            {
+                // Сигналізуємо головному потоку про своє завершення
+                completionSemaphore.Release();
             }
         }
 
         private void Consume(int consumerIndex)
         {
-            int personalConsumed = 0;
-            while (true)
+            try
             {
-                filledSlots.WaitOne();
-                accessMutex.WaitOne();
-
-                if (globalConsumed >= totalItems)
+                int personalConsumed = 0;
+                while (true)
                 {
+                    filledSlots.WaitOne();
+                    accessMutex.WaitOne();
+
+                    if (globalConsumed >= totalItems)
+                    {
+                        accessMutex.Release();
+                        filledSlots.Release();
+                        break;
+                    }
+
+                    currentStorageCount--;
+                    globalConsumed++;
+                    personalConsumed++;
+
+                    Console.WriteLine($"{consumerIndex} Споживач спожив свій {personalConsumed} товар на складі, заповненість {currentStorageCount}");
+
+                    bool finishedAll = (globalConsumed == totalItems);
+
                     accessMutex.Release();
-                    filledSlots.Release();
-                    break;
+                    emptySlots.Release();
+
+                    if (finishedAll)
+                    {
+                        filledSlots.Release(numConsumers);
+                        break;
+                    }
                 }
-
-                currentStorageCount--;
-                globalConsumed++;
-                personalConsumed++;
-
-                Console.WriteLine($"{consumerIndex} Споживач спожив свій {personalConsumed} товар на складі, заповненість {currentStorageCount}");
-
-                bool finishedAll = (globalConsumed == totalItems);
-
-                accessMutex.Release();
-                emptySlots.Release();
-
-                if (finishedAll)
-                {
-                    filledSlots.Release(numConsumers);
-                    break;
-                }
+            }
+            finally
+            {
+                // Сигналізуємо головному потоку про своє завершення
+                completionSemaphore.Release();
             }
         }
     }
