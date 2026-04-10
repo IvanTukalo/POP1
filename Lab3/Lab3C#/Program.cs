@@ -101,14 +101,14 @@ namespace Lab3Csharp
                 else
                 {
                     Random rnd = new Random();
-                    numProducers = rnd.Next(1, 6);
-                    numConsumers = rnd.Next(1, 6);
-                    capacity = rnd.Next(6, 21);
+                    numProducers = rnd.Next(1, 3);
+                    numConsumers = rnd.Next(1, 3);
+                    capacity = rnd.Next(3, 6);
 
                     producerItems = new int[numProducers];
                     for (int i = 0; i < numProducers; i++)
                     {
-                        producerItems[i] = rnd.Next(1, 51);
+                        producerItems[i] = rnd.Next(6, 11);
                     }
                 }
 

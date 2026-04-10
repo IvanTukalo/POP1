@@ -95,13 +95,13 @@ public class Main {
             }
             else {
                 Random rnd = new Random();
-                numProducers = rnd.nextInt(5) + 1;
-                numConsumers = rnd.nextInt(5) + 1;
-                capacity = rnd.nextInt(16) + 5;
+                numProducers = rnd.nextInt(2) + 1;
+                numConsumers = rnd.nextInt(2) + 1;
+                capacity = rnd.nextInt(4) + 2;
 
                 producerItems = new int[numProducers];
                 for (int i = 0; i < numProducers; i++) {
-                    producerItems[i] = rnd.nextInt(50) + 1;
+                    producerItems[i] = rnd.nextInt(10) + 5;
                 }
             }
 

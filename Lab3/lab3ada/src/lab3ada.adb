@@ -104,13 +104,13 @@ begin
       elsif Mode = 0 then
          exit;
       else
-         Num_Producers := (Random_Gen.Random (Gen) mod 5) + 1;
-         Num_Consumers := (Random_Gen.Random (Gen) mod 5) + 1;
-         Capacity := (Random_Gen.Random (Gen) mod 16) + 5;
+         Num_Producers := (Random_Gen.Random (Gen) mod 2) + 1;
+         Num_Consumers := (Random_Gen.Random (Gen) mod 2) + 1;
+         Capacity := (Random_Gen.Random (Gen) mod 4) + 2;
          
          Producer_Items := new Int_Array (1 .. Num_Producers);
          for I in 1 .. Num_Producers loop
-            Producer_Items (I) := (Random_Gen.Random (Gen) mod 50) + 1;
+            Producer_Items (I) := (Random_Gen.Random (Gen) mod 10) + 5;
          end loop;
       end if;
 
