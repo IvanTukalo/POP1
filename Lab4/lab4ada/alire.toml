@@ -1,0 +1,12 @@
+name = "lab4ada"
+description = ""
+version = "0.1.0-dev"
+
+authors = ["Ivan Tukalo"]
+maintainers = ["Ivan Tukalo <tukaloiv@gmail.com>"]
+maintainers-logins = ["IvanTukalo"]
+licenses = "MIT OR Apache-2.0 WITH LLVM-exception"
+website = ""
+tags = []
+
+executables = ["lab4ada"]
